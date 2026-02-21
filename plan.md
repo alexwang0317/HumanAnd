@@ -34,16 +34,65 @@ Goal: Bot exists, connects to Slack via Socket Mode, and echoes back that it hea
 - `message.channels` — triggers on every message in public channels the bot is in
 
 ## Phase 2: Grounding (Give it memory)
-Goal: Bot reads the ground truth file and uses it to detect misalignment.
+Goal: Bot reads the ground truth file and uses it to detect misalignment and route questions.
 
-- [ ] Load `projects/new_human_and_model.txt` and cache its contents in memory
+- [ ] Upgrade ground truth files from plain text to structured markdown (see Ground Truth Format below)
+- [ ] Load the channel's ground truth file and cache its contents in memory
 - [ ] Integrate Claude API — bot sends ground truth as system context + user's message as the prompt
 - [ ] **Two trigger modes:**
   - **@mention** — bot responds directly with an answer grounded in the ground truth
-  - **Passive alignment check** — bot reads every channel message, runs a cheap cached classification call (Claude Haiku) to check if the message conflicts with ground truth. Only speaks up if misalignment is detected.
+  - **Passive alignment check** — bot reads every channel message, runs a Haiku classification call to check if the message is unclear or conflicts with ground truth. Only speaks up when something seems off — not aggressively, just when intent is ambiguous or direction seems to drift. Err on the side of staying quiet.
 - [ ] Cache alignment classification results to minimize API costs (same ground truth + similar message = skip re-check)
+- [ ] Map each Slack channel to a project ground truth file (one project per channel)
 - [ ] Store API keys in `.env`, add `.env` to `.gitignore`
 - [ ] **Checkpoint:** Ask the bot "what's the team's goal?" via @mention — it answers correctly. Post a message that contradicts the ground truth — bot flags it.
+
+### Ground Truth Format
+
+Ground truth files use structured plaintext with Slack user IDs so the bot can actually ping people. Example `projects/new_human_and_model.txt`:
+
+```markdown
+# Project Ground Truth
+
+## Core Objective
+Launch the MVP by Friday with zero new database dependencies.
+
+## Directory & Responsibilities
+* **Database & Infrastructure:** Alex (<@U11111111>)
+* **Frontend & UI:** Sarah (<@U22222222>)
+* **Product & Timelines:** Manager Dan (<@U33333333>)
+
+## AI Decision Log
+* **2026-02-21:** Team agreed to pivot to MongoDB. (Accepted — proposed by bot after #backend discussion)
+```
+
+The **Directory** section is critical — it maps people to ownership areas using their real Slack user IDs (find via profile -> three dots -> "Copy member ID"). This is what powers the routing system.
+
+The **AI Decision Log** is where accepted ground truth changes get appended, with timestamps and context.
+
+### Ground Truth Size Limit
+
+A hardcoded word limit (e.g., `MAX_GROUND_TRUTH_WORDS = 1000`) lives at the top of `ground_truth.py`. When the file exceeds this limit after an accepted update, the bot runs a compaction step:
+
+1. Send the full ground truth to Claude with a prompt: "Compress this document to stay under {limit} words. Preserve all Directory entries and the Core Objective. Summarize older Decision Log entries into concise bullets. Drop anything redundant."
+2. Post the compacted version in Slack for Y/N approval (same flow as any other ground truth update).
+3. On acceptance, overwrite the file with the compacted version.
+
+This keeps the ground truth from ballooning into a document nobody reads.
+
+### LLM Action Types
+
+The LLM classifies every message into one of four actions. The system prompt (in `prompts/respond.md`) instructs it to output exactly one:
+
+- **`ROUTE: <@UserID> | summary`** — Someone is asking a question or needs help. The bot identifies the right person from the Directory and tags them in-thread with context. Eliminates the "who do I ask?" problem.
+- **`UPDATE: [new ground truth entry]`** — A concrete decision was made in conversation. Bot proposes a ground truth change (goes through the Y/N approval flow in Phase 4).
+- **`QUESTION: [clarification]`** — Someone said something vague or ambiguous about a task. Bot asks a gentle follow-up to get clarity.
+- **`PASS`** — Nothing to do. Message is aligned, clear, and doesn't need routing.
+
+When the bot receives a `ROUTE:` response, it posts in-thread:
+> "Hey <@U11111111>, <@U22222222> needs help understanding the MongoDB pivot. Could you jump in here?"
+
+This keeps the main channel clean and connects the right people without anyone having to dig through a wiki.
 
 ## Phase 3: Conversation (Make it useful)
 Goal: Bot maintains conversation context and gives substantive responses.
@@ -75,13 +124,43 @@ Goal: Ground truth evolves based on what's happening in Slack.
 
 - [ ] Bot detects when conversations suggest the team's direction is shifting (new decisions, changed priorities, revised goals)
 - [ ] Bot proposes an edit to the ground truth file directly in Slack — posts the suggested change with a short explanation of *why* it's proposing the update
-- [ ] Users respond with "Y" to accept or "N" to reject
-- [ ] On acceptance: bot writes the change to `projects/new_human_and_model.txt` and appends a changelog entry (date, what changed, why)
+- [ ] Any user in the channel can respond to approve or reject — any affirmative ("Y", "yes", "yeah", "sure", thumbs-up react) counts as acceptance, any negative ("N", "no", "nah") counts as rejection
+- [ ] On acceptance: bot writes the change to the channel's ground truth file and appends a changelog entry (date, what changed, why)
 - [ ] On rejection: bot acknowledges and moves on
 - [ ] Bot re-reads ground truth after every accepted change (no restart needed)
+- [ ] After each accepted update, check word count against `MAX_GROUND_TRUTH_WORDS` (hardcoded in `ground_truth.py`). If over the limit, trigger compaction — summarize older entries, preserve Directory and Core Objective, propose the compacted version for Y/N approval.
 - [ ] **Checkpoint:** Bot notices a goal shift in conversation, proposes a ground truth update, user approves, ground truth file is updated.
 
-## Phase 5: Polish (Make it solid)
+## Phase 5: Dashboard (Make it visible)
+Goal: Track what the bot is doing so humans can review its behavior over time.
+
+- [ ] Log every misalignment flag to SQLite — store: timestamp, channel, message that triggered it, what ground truth it compared against, the bot's nudge message, and whether the user seemed to agree or push back
+- [ ] Log every ground truth update proposal — store: timestamp, channel, proposed change, reason, accepted/rejected, who responded
+- [ ] Add a `/dashboard` slash command (or a simple local web page served by the bot) that shows:
+  - Recent misalignment flags (last 7 days) with context
+  - Ground truth change history (what changed, when, why, who approved)
+  - Per-channel activity summary (how often the bot speaks up, acceptance rate)
+- [ ] **Checkpoint:** Run the bot for a day, then pull up the dashboard and see a clear picture of what it flagged, what changed, and how the team responded.
+
+### SQLite Tables
+
+```
+misalignment_log
+├── id, timestamp, channel_id
+├── original_message       # The message that triggered the flag
+├── ground_truth_snapshot  # What ground truth looked like at the time
+├── nudge_message          # What the bot said
+└── user_reaction          # Did the user acknowledge, push back, or ignore?
+
+ground_truth_changes
+├── id, timestamp, channel_id
+├── proposed_change        # What the bot suggested
+├── reason                 # Why the bot thought it should change
+├── accepted               # Boolean
+└── responded_by           # Slack user ID of who said Y/N
+```
+
+## Phase 6: Polish (Make it solid)
 Goal: Handle edge cases, clean up, make it presentable.
 
 - [ ] Error handling (API failures, rate limits, malformed messages)
@@ -96,17 +175,23 @@ Goal: Handle edge cases, clean up, make it presentable.
 ```
 HumanAnd/
 ├── main.py                 # Entry point — loads config, starts the Slack bot
-├── bot.py                  # Slack event handlers (on_message, threading, Y/N approval)
+├── bot.py                  # Slack event handlers (on_message, threading, approval)
 ├── llm.py                  # Builds prompts, calls Claude (alignment checks + responses)
 ├── history.py              # Tracks per-thread conversation context (last 20 messages)
 ├── ground_truth.py         # Reads, caches, and writes ground truth files
+├── db.py                   # SQLite setup and queries (history, channel mapping, dashboard logs)
+├── dashboard.py            # Serves dashboard view (slash command or local web page)
 ├── prompts/
 │   ├── alignment_check.md  # Prompt for passive misalignment detection (Haiku)
-│   ├── respond.md          # Prompt for @mention responses (Sonnet/Opus)
+│   ├── nudge.md            # Prompt for how the bot speaks up (gentle tone)
+│   ├── respond.md          # Prompt for @mention responses + action classification (ROUTE/UPDATE/QUESTION/PASS)
+│   ├── route.md            # Prompt template for routing messages to the right person
 │   ├── relevance.md        # Prompt for message relevance classification (Haiku)
+│   ├── compaction.md       # Prompt for compressing ground truth when it exceeds word limit
 │   └── ground_truth_update.md  # Prompt for proposing ground truth edits
 ├── projects/
 │   └── new_human_and_model.txt   # Ground truth file (evolves over time)
+├── humanand.db             # SQLite database (auto-created, gitignored)
 ├── pyproject.toml
 ├── .env                    # SLACK_BOT_TOKEN, SLACK_APP_TOKEN, ANTHROPIC_API_KEY
 ├── .gitignore
@@ -120,9 +205,11 @@ HumanAnd/
 - **`main.py`** — Wires everything together. Loads `.env`, initializes the Slack app in Socket Mode, registers handlers from `bot.py`, starts listening. The only file you run.
 - **`bot.py`** — Owns all Slack interaction. Handles @mentions, passive message listening, in-thread replies, and Y/N approval flow for ground truth updates.
 - **`llm.py`** — Owns all Claude API calls. Loads prompt templates from `prompts/`, builds the full prompt with ground truth + history, routes to the right model (Haiku for cheap classification, Sonnet/Opus for substantive responses).
-- **`history.py`** — Dict of `thread_id -> list of messages`, capped at 20. Used by `bot.py` to pass context into `llm.py`. Handles dynamic relevance detection.
-- **`ground_truth.py`** — Reads and caches ground truth from `projects/`. Writes accepted updates back to the file with changelog entries.
-- **`prompts/`** — Markdown files, one per prompt type. Loaded by `llm.py` at call time so you can edit them without restarting.
+- **`history.py`** — Reads/writes thread history to SQLite. Capped at 20 messages per thread. Used by `bot.py` to pass context into `llm.py`. Handles dynamic relevance detection.
+- **`ground_truth.py`** — Reads and caches ground truth from `projects/`. Writes accepted updates back to the file with changelog entries. Uses channel-project mapping from SQLite.
+- **`db.py`** — SQLite setup. Stores thread history, channel-to-project mapping, misalignment log, and ground truth changelog.
+- **`dashboard.py`** — Reads from SQLite and serves a dashboard view — recent flags, ground truth history, per-channel stats. Exposed via slash command or a simple local web page.
+- **`prompts/`** — Markdown files, one per prompt type. Loaded by `llm.py` at call time so you can edit them without restarting. Includes `nudge.md` which defines the bot's gentle tone when flagging misalignment.
 - **`projects/`** — Ground truth files. The bot reads from and writes to here.
 
 ## Environment Variables
@@ -144,6 +231,8 @@ slack-bolt          # Slack bot framework
 python-dotenv       # Load .env file
 anthropic           # Claude API client
 ```
+
+SQLite is used for persistence (stdlib `sqlite3` — no extra dependency needed).
 
 ## How to Run
 
