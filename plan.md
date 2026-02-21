@@ -160,7 +160,43 @@ ground_truth_changes
 └── responded_by           # Slack user ID of who said Y/N
 ```
 
-## Phase 6: Polish (Make it solid)
+## Phase 6: Tests (Prove it works)
+Goal: After each module is written, write tests for it. Keep tests focused on behavior.
+
+### `test_llm.py`
+- [ ] Given a message that contradicts ground truth, LLM returns a non-PASS action
+- [ ] Given a benign message, LLM returns PASS
+- [ ] Given a question about ownership, LLM returns ROUTE with the correct user ID from the Directory
+- [ ] Given a concrete decision, LLM returns UPDATE with a reasonable entry
+- [ ] Given a vague message, LLM returns QUESTION with a clarification
+
+### `test_history.py`
+- [ ] Thread history caps at 20 messages (oldest dropped first)
+- [ ] Messages from a new thread don't bleed into an existing thread
+- [ ] Relevance detection: messages within time window from same participants are grouped
+- [ ] Relevance detection: messages across a gap are treated as separate
+
+### `test_ground_truth.py`
+- [ ] Reads and caches a ground truth file correctly
+- [ ] After a write, cache is invalidated and re-read returns updated content
+- [ ] Compaction triggers when word count exceeds `MAX_GROUND_TRUTH_WORDS`
+- [ ] Compaction preserves Directory and Core Objective sections
+- [ ] Changelog entry is appended with correct format (date, change, reason)
+
+### `test_db.py`
+- [ ] Schema creates tables on first run without error
+- [ ] Misalignment log insert and query round-trips correctly
+- [ ] Ground truth changes log insert and query round-trips correctly
+- [ ] Channel-to-project mapping stores and retrieves correctly
+
+### `test_bot.py`
+- [ ] Bot ignores its own messages
+- [ ] Bot replies in-thread, not in the main channel
+- [ ] Affirmative responses ("Y", "yes", "yeah", "sure") are recognized as approval
+- [ ] Negative responses ("N", "no", "nah") are recognized as rejection
+- [ ] ROUTE action results in a message tagging the correct user
+
+## Phase 7: Polish (Make it solid)
 Goal: Handle edge cases, clean up, make it presentable.
 
 - [ ] Error handling (API failures, rate limits, malformed messages)
@@ -191,6 +227,12 @@ HumanAnd/
 │   └── ground_truth_update.md  # Prompt for proposing ground truth edits
 ├── projects/
 │   └── new_human_and_model.txt   # Ground truth file (evolves over time)
+├── tests/
+│   ├── test_llm.py         # Tests for action classification (ROUTE/UPDATE/QUESTION/PASS)
+│   ├── test_bot.py         # Tests for message handling, threading, approval parsing
+│   ├── test_history.py     # Tests for thread history and relevance detection
+│   ├── test_ground_truth.py # Tests for reading, writing, compaction
+│   └── test_db.py          # Tests for SQLite queries and schema
 ├── humanand.db             # SQLite database (auto-created, gitignored)
 ├── pyproject.toml
 ├── .env                    # SLACK_BOT_TOKEN, SLACK_APP_TOKEN, ANTHROPIC_API_KEY
