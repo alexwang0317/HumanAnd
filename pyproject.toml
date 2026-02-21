@@ -1,0 +1,9 @@
+[project]
+name = "humanand"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pyrefly>=0.53.0",
+]
