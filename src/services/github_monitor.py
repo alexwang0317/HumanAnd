@@ -35,9 +35,16 @@ def fetch_open_prs(repo: str) -> list[dict]:
 
 
 def fetch_pr_commits(repo: str, pr_number: int) -> list[str]:
+    """Fetch only the latest commit message for a PR.
+
+    PR branches often carry old/unrelated commits. The most recent commit
+    plus the PR title give the clearest signal of intent.
+    """
     url = f"https://api.github.com/repos/{repo}/pulls/{pr_number}/commits"
     commits = _github_get(url)
-    return [c["commit"]["message"] for c in commits]
+    if not commits:
+        return []
+    return [commits[-1]["commit"]["message"]]
 
 
 def parse_github_map(ground_truth: str) -> dict[str, dict]:

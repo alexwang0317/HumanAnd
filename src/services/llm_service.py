@@ -69,7 +69,7 @@ def classify_pr(
         model=MODEL,
         max_tokens=128,
         system=system_prompt,
-        messages=[{"role": "user", "content": f"PR: {pr_title}\n\nCommits:\n{commits}"}],
+        messages=[{"role": "user", "content": "Check this PR for alignment."}],
     )
     return _extract_text(response)
 

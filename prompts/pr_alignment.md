@@ -9,16 +9,16 @@ You are checking whether a GitHub PR matches the author's ownership area on the 
 ## PR Details
 Title: {pr_title}
 
-Commit messages:
+Latest commit:
 {commits}
 
 ## Task
 Does this PR fall within {author_name}'s ownership area ({author_role})?
 
-Judge based on the overall intent of the PR — the title and the majority of commits together. A few commits that incidentally touch another area do not make the whole PR misaligned.
+Judge primarily on the PR title. Use the latest commit as supporting context only. The PR title is the best signal of what the PR is about.
 
 Output exactly one line:
-- PASS — if the overall work matches their ownership area, or if it's ambiguous enough to be reasonable.
+- PASS — if the work matches their ownership area, or if it's ambiguous enough to be reasonable.
 - NUDGE: [one sentence explaining who might be a better owner, referencing a specific person from the Directory if possible]
 
-Err on the side of PASS. Only nudge when the overall PR clearly belongs to someone else's area.
+Err on the side of PASS. Only nudge when the PR clearly belongs to someone else's area.
