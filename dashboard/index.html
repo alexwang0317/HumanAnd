@@ -19,23 +19,29 @@
     .header-text { }
     .subtitle { color: #656d76; margin-top: 4px; }
     .project-select { font-family: inherit; font-size: 14px; font-weight: 500; padding: 8px 14px; border: none; border-radius: 8px; background: #ffffff; color: #1f2328; cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23656d76' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
-    h2 { font-size: 18px; font-weight: 500; margin-bottom: 16px; color: #1f2328; border-bottom: 1px solid #d0d7de; padding-bottom: 8px; }
-    .section { margin-bottom: 40px; }
+    h2 { font-size: 18px; font-weight: 500; margin-bottom: 16px; color: #1f2328; }
+    .section { background: #ffffff; border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+
+    /* Top section: chart + stats side by side */
+    .top-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+    @media (max-width: 768px) { .top-row { grid-template-columns: 1fr; } }
+
+    /* Chart */
+    .chart-section { background: #ffffff; border: none; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; }
+    .chart-container { flex: 1; min-height: 0; }
 
     /* Stats cards */
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 32px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: 12px; }
     .stat-card { background: #ffffff; border: none; border-radius: 12px; padding: 18px 20px; text-align: left; }
     .stat-label { font-size: 13px; font-weight: 500; color: #656d76; margin-bottom: 12px; }
     .stat-row { display: flex; align-items: baseline; justify-content: space-between; }
     .stat-value { font-size: 28px; font-weight: 700; color: #1f2328; }
     .stat-growth { font-size: 13px; font-weight: 500; color: #1a7f37; }
 
-    /* Chart */
-    .chart-container { background: #ffffff; border: none; border-radius: 8px; padding: 16px; margin-bottom: 32px; max-height: 280px; }
-
     /* Timeline & event lists */
     .event-list { list-style: none; }
-    .event-item { background: #ffffff; border: none; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; display: flex; gap: 12px; align-items: flex-start; }
+    .event-item { background: transparent; border-bottom: 1px solid #f0f2f5; padding: 12px 0; display: flex; gap: 12px; align-items: flex-start; }
+    .event-item:last-child { border-bottom: none; }
     .event-meta { flex-shrink: 0; min-width: 130px; }
     .event-time { font-size: 12px; color: #656d76; font-family: monospace; }
     .event-content { flex: 1; }
@@ -70,12 +76,17 @@
     .time-btn { font-family: inherit; font-size: 13px; font-weight: 500; padding: 6px 16px; border: none; border-radius: 6px; background: transparent; color: #656d76; cursor: pointer; }
     .time-btn.active { background: #ffffff; color: #1f2328; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
 
-    .filter-bar { margin-bottom: 24px; }
-    .filter-bar select { font-family: inherit; font-size: 14px; padding: 6px 12px; border: none; border-radius: 6px; background: #ffffff; color: #1f2328; cursor: pointer; }
+    .filter-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .filter-bar select { font-family: inherit; font-size: 14px; padding: 8px 12px; border: none; border-radius: 8px; background: #ffffff; color: #1f2328; cursor: pointer; }
+    .search-input { font-family: inherit; font-size: 14px; padding: 8px 12px 8px 34px; border: none; border-radius: 8px; background: #ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23656d76' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E") no-repeat 10px center; color: #1f2328; flex: 1; max-width: 280px; }
+    .search-input::placeholder { color: #656d76; }
 
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 40px; }
     .two-col .section { margin-bottom: 0; }
     @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+    .status-bar { display: flex; align-items: center; gap: 8px; background: #ffffff; border-radius: 10px; padding: 12px 20px; margin-bottom: 24px; font-size: 14px; font-weight: 500; color: #1f2328; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #1a7f37; flex-shrink: 0; }
 
     .empty { color: #656d76; font-style: italic; padding: 24px; text-align: center; }
     .project-name { font-size: 12px; color: #656d76; }
@@ -105,23 +116,29 @@
       </select>
     </div>
 
-    <div class="stats-grid" id="stats-grid"></div>
+    <div class="status-bar">
+      <span class="status-dot"></span>
+      All systems operational
+    </div>
 
-    <div class="section">
-      <h2>Activity</h2>
-      <div class="chart-container">
-        <canvas id="activity-chart"></canvas>
+    <div class="top-row">
+      <div class="chart-section">
+        <h2>Activity</h2>
+        <div class="chart-container">
+          <canvas id="activity-chart"></canvas>
+        </div>
+        <div class="time-toggle">
+          <button class="time-btn" data-range="1">1D</button>
+          <button class="time-btn active" data-range="7">1W</button>
+          <button class="time-btn" data-range="30">1M</button>
+          <button class="time-btn" data-range="0">ALL</button>
+        </div>
       </div>
-      <div class="time-toggle">
-        <button class="time-btn" data-range="1">1D</button>
-        <button class="time-btn active" data-range="7">1W</button>
-        <button class="time-btn" data-range="30">1M</button>
-        <button class="time-btn" data-range="0">ALL</button>
-      </div>
+      <div class="stats-grid" id="stats-grid"></div>
     </div>
 
     <div class="filter-bar">
-      <label for="category-filter">Filter by category: </label>
+      <input type="text" class="search-input" id="search-input" placeholder="Search events...">
       <select id="category-filter">
         <option value="all">All</option>
         <option value="decision">Decision</option>
@@ -365,6 +382,7 @@
       applyFilter();
 
       document.getElementById('category-filter').addEventListener('change', applyFilter);
+      document.getElementById('search-input').addEventListener('input', applyFilter);
       for (const btn of document.querySelectorAll('.time-btn')) {
         btn.addEventListener('click', () => {
           document.querySelector('.time-btn.active').classList.remove('active');
@@ -376,7 +394,12 @@
 
     function applyFilter() {
       const cat = document.getElementById('category-filter').value;
-      const filter = items => cat === 'all' ? items : items.filter(e => e.category === cat);
+      const query = document.getElementById('search-input').value.toLowerCase();
+      const filter = items => {
+        let filtered = cat === 'all' ? items : items.filter(e => e.category === cat);
+        if (query) filtered = filtered.filter(e => (e.summary || e.content || '').toLowerCase().includes(query));
+        return filtered;
+      };
       renderTimeline(filter(_timeline));
       renderChanges(filter(_changes));
       renderMisalignments(filter(_misalignments));

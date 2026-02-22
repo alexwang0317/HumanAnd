@@ -6,10 +6,10 @@ from slack_bolt import App
 
 log = logging.getLogger(__name__)
 
-from agent import ProjectAgent
-from dashboard import deploy
-from db import log_event, update_reaction
-from history import fetch_context
+from src.services.project_service import ProjectAgent
+from src.services.dashboard_service import deploy
+from src.stores.db import log_event, update_reaction
+from src.utils.history import fetch_context
 
 _agents: dict[str, ProjectAgent] = {}
 _pending_updates: dict[str, dict] = {}
@@ -84,6 +84,18 @@ def _format_diff(current: str, addition: str) -> str:
     return "\n".join(parts)
 
 
+def _propose_compaction(agent: ProjectAgent, channel_id: str, thread_ts: str, client) -> None:
+    """If ground truth needs compaction, run it and post the result for approval."""
+    compacted = agent.compact()
+    log.info("[%s] Ground truth compacted (%d words)", agent.name, len(compacted.split()))
+    client.chat_postMessage(
+        channel=channel_id,
+        text=f":compression: *Ground truth was getting long — here's a compacted version:*\n\n```{compacted[:1500]}```\n\n"
+             "React :white_check_mark: to accept or :x: to keep the original.",
+        thread_ts=thread_ts,
+    )
+
+
 def register_handlers(app: App) -> None:
     app.event("app_mention")(handle_app_mention)
     app.event("message")(handle_message)
@@ -145,7 +157,7 @@ def _check_text_approval(event: dict, client, say) -> bool:
         if word in APPROVE_WORDS:
             pending = _pending_updates.pop(thread_ts)
             agent = _get_agent(pending["channel_name"])
-            agent.apply_update(pending["update_text"], user)
+            needs_compaction = agent.apply_update(pending["update_text"], user)
             agent.log_message(pending["user"], pending["permalink"], pending["category"], pending["update_text"])
             update_reaction(pending["channel_name"], pending["event_id"], "approved", user)
             client.chat_postMessage(
@@ -153,6 +165,8 @@ def _check_text_approval(event: dict, client, say) -> bool:
                 text=":white_check_mark: Ground truth updated.",
                 thread_ts=pending["thread_ts"],
             )
+            if needs_compaction:
+                _propose_compaction(agent, channel_id, pending["thread_ts"], client)
             return True
         if word in REJECT_WORDS:
             pending = _pending_updates.pop(thread_ts)
@@ -299,7 +313,7 @@ def handle_reaction(event: dict, client, say) -> None:
     if reaction in APPROVE_REACTIONS:
         del _pending_updates[msg_ts]
         agent = _get_agent(pending["channel_name"])
-        agent.apply_update(pending["update_text"], user)
+        needs_compaction = agent.apply_update(pending["update_text"], user)
         agent.log_message(
             pending["user"], pending["permalink"], pending["category"], pending["update_text"]
         )
@@ -310,6 +324,9 @@ def handle_reaction(event: dict, client, say) -> None:
             thread_ts=pending["thread_ts"],
         )
         log.info("[%s] UPDATE accepted by %s", pending["channel_name"], user)
+
+        if needs_compaction:
+            _propose_compaction(agent, channel_id, pending["thread_ts"], client)
 
         # Validate directory user IDs against channel membership
         try:

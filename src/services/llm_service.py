@@ -49,6 +49,26 @@ def compact_ground_truth(ground_truth: str) -> str:
     return _extract_text(response)
 
 
+def classify_pr(
+    author_name: str, author_role: str, pr_title: str, commits: str, ground_truth: str
+) -> str:
+    system_prompt = _load_prompt("pr_alignment.md").format(
+        author_name=author_name,
+        author_role=author_role,
+        pr_title=pr_title,
+        commits=commits,
+        ground_truth=ground_truth,
+    )
+    client = _get_client()
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=128,
+        system=system_prompt,
+        messages=[{"role": "user", "content": f"PR: {pr_title}\n\nCommits:\n{commits}"}],
+    )
+    return _extract_text(response)
+
+
 def respond_to_mention(ground_truth: str, message: str, history: str = "", messages: str = "") -> str:
     system_prompt = _load_prompt("respond.md").format(
         ground_truth=ground_truth,

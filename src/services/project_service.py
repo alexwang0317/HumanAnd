@@ -6,7 +6,7 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-from llm import classify_message, compact_ground_truth, respond_to_mention
+from src.services.llm_service import classify_message, compact_ground_truth, respond_to_mention
 
 log = logging.getLogger(__name__)
 

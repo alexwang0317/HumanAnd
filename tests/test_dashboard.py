@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from dashboard import build_stats, parse_messages_txt, export
+from src.services.dashboard_service import build_stats, parse_messages_txt, export
 
 
 def test_parse_messages_txt():
@@ -62,8 +62,8 @@ def test_export_writes_json_files():
 
         dashboard_dir = Path(tmp) / "dashboard" / "data"
 
-        with patch("dashboard.PROJECTS_DIR", Path(tmp)):
-            with patch("dashboard.DASHBOARD_DIR", dashboard_dir):
+        with patch("src.services.dashboard_service.PROJECTS_DIR", Path(tmp)):
+            with patch("src.services.dashboard_service.DASHBOARD_DIR", dashboard_dir):
                 export("testproject")
 
         assert (dashboard_dir / "meta.json").exists()

@@ -26,7 +26,7 @@ def get_db(project_name: str) -> sqlite3.Connection:
         return _connections[project_name]
     db_path = PROJECTS_DIR / project_name / "events.db"
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path))
+    conn = sqlite3.connect(str(db_path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute(CREATE_EVENTS)
     conn.commit()

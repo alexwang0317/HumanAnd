@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from bot import (
+from src.handlers.slack_events import (
     _build_permalink,
     _check_text_approval,
     _format_diff,
@@ -61,9 +61,9 @@ def test_handle_message_ignores_subtypes():
     say.assert_not_called()
 
 
-@patch("bot.fetch_context", return_value="")
-@patch("bot._get_agent")
-@patch("bot._resolve_channel_name", return_value="test_channel")
+@patch("src.handlers.slack_events.fetch_context", return_value="")
+@patch("src.handlers.slack_events._get_agent")
+@patch("src.handlers.slack_events._resolve_channel_name", return_value="test_channel")
 def test_handle_message_pass_stays_silent(mock_resolve, mock_agent, mock_history):
     mock_agent.return_value.classify.return_value = "PASS"
     event = {"channel": "C123", "user": "U123", "text": "sounds good", "ts": "123.456"}
@@ -73,10 +73,10 @@ def test_handle_message_pass_stays_silent(mock_resolve, mock_agent, mock_history
     say.assert_not_called()
 
 
-@patch("bot.log_event", return_value=1)
-@patch("bot.fetch_context", return_value="")
-@patch("bot._get_agent")
-@patch("bot._resolve_channel_name", return_value="test_channel")
+@patch("src.handlers.slack_events.log_event", return_value=1)
+@patch("src.handlers.slack_events.fetch_context", return_value="")
+@patch("src.handlers.slack_events._get_agent")
+@patch("src.handlers.slack_events._resolve_channel_name", return_value="test_channel")
 def test_handle_message_route_tags_user(mock_resolve, mock_agent, mock_history, mock_db):
     mock_agent.return_value.classify.return_value = "ROUTE|escalation: <@U999> | needs DB help"
     event = {"channel": "C123", "user": "U123", "text": "who handles DB?", "ts": "123.456"}
@@ -90,10 +90,10 @@ def test_handle_message_route_tags_user(mock_resolve, mock_agent, mock_history, 
     mock_agent.return_value.log_message.assert_called_once()
 
 
-@patch("bot.log_event", return_value=42)
-@patch("bot.fetch_context", return_value="")
-@patch("bot._get_agent")
-@patch("bot._resolve_channel_name", return_value="test_channel")
+@patch("src.handlers.slack_events.log_event", return_value=42)
+@patch("src.handlers.slack_events.fetch_context", return_value="")
+@patch("src.handlers.slack_events._get_agent")
+@patch("src.handlers.slack_events._resolve_channel_name", return_value="test_channel")
 def test_handle_message_update_proposes_change(mock_resolve, mock_agent, mock_history, mock_db):
     mock_agent.return_value.classify.return_value = "UPDATE|decision: Switch to PostgreSQL"
     mock_agent.return_value.ground_truth = "## Core Objective\nLaunch MVP by Friday."
@@ -132,9 +132,9 @@ def test_format_diff_with_short_content():
     assert "+ New entry." in result
 
 
-@patch("bot.update_reaction")
-@patch("bot._get_agent")
-@patch("bot._resolve_channel_name", return_value="test_channel")
+@patch("src.handlers.slack_events.update_reaction")
+@patch("src.handlers.slack_events._get_agent")
+@patch("src.handlers.slack_events._resolve_channel_name", return_value="test_channel")
 def test_reaction_approve_updates_ground_truth(mock_resolve, mock_agent, mock_db_react):
     _pending_updates["999.000"] = {
         "update_text": "Switch to PostgreSQL",
@@ -161,9 +161,9 @@ def test_reaction_approve_updates_ground_truth(mock_resolve, mock_agent, mock_db
     assert "999.000" not in _pending_updates
 
 
-@patch("bot.update_reaction")
-@patch("bot._get_agent")
-@patch("bot._resolve_channel_name", return_value="test_channel")
+@patch("src.handlers.slack_events.update_reaction")
+@patch("src.handlers.slack_events._get_agent")
+@patch("src.handlers.slack_events._resolve_channel_name", return_value="test_channel")
 def test_reaction_reject_discards_change(mock_resolve, mock_agent, mock_db_react):
     _pending_updates["888.000"] = {
         "update_text": "Switch to PostgreSQL",
@@ -187,11 +187,11 @@ def test_reaction_reject_discards_change(mock_resolve, mock_agent, mock_db_react
     assert "888.000" not in _pending_updates
 
 
-@patch("bot.log_event", return_value=10)
-@patch("bot.fetch_context", return_value="")
-@patch("bot.Path")
-@patch("bot._get_agent")
-@patch("bot._resolve_channel_name", return_value="test_channel")
+@patch("src.handlers.slack_events.log_event", return_value=10)
+@patch("src.handlers.slack_events.fetch_context", return_value="")
+@patch("src.handlers.slack_events.Path")
+@patch("src.handlers.slack_events._get_agent")
+@patch("src.handlers.slack_events._resolve_channel_name", return_value="test_channel")
 def test_handle_message_question_tracks_nudge(mock_resolve, mock_agent, mock_path, mock_history, mock_db):
     mock_agent.return_value.classify.return_value = "QUESTION|blocker: What do you mean by that?"
     mock_path.return_value.read_text.return_value = "Hey, just checking — {nudge_content} Does that still align with what we agreed on?\n"
@@ -208,9 +208,9 @@ def test_handle_message_question_tracks_nudge(mock_resolve, mock_agent, mock_pat
     del _pending_nudges["777.000"]
 
 
-@patch("bot.fetch_context", return_value="")
-@patch("bot._get_agent")
-@patch("bot._resolve_channel_name", return_value="test_channel")
+@patch("src.handlers.slack_events.fetch_context", return_value="")
+@patch("src.handlers.slack_events._get_agent")
+@patch("src.handlers.slack_events._resolve_channel_name", return_value="test_channel")
 def test_handle_app_mention_responds(mock_resolve, mock_agent, mock_history):
     mock_agent.return_value.respond.return_value = "The goal is to launch MVP by Friday."
     event = {"channel": "C123", "user": "U123", "text": "what's our goal?", "ts": "123.456"}
@@ -220,8 +220,8 @@ def test_handle_app_mention_responds(mock_resolve, mock_agent, mock_history):
     say.assert_called_once_with("The goal is to launch MVP by Friday.", thread_ts="123.456")
 
 
-@patch("bot._get_agent")
-@patch("bot._resolve_channel_name", return_value="test_channel")
+@patch("src.handlers.slack_events._get_agent")
+@patch("src.handlers.slack_events._resolve_channel_name", return_value="test_channel")
 def test_handle_app_mention_role_command(mock_resolve, mock_agent):
     mock_agent.return_value.set_role.return_value = "Updated your role: Database & Infrastructure"
     event = {"channel": "C123", "user": "U123", "text": "<@BOT123> role Database & Infrastructure", "ts": "123.456"}
@@ -232,7 +232,7 @@ def test_handle_app_mention_role_command(mock_resolve, mock_agent):
     say.assert_called_once()
 
 
-@patch("bot.update_reaction")
+@patch("src.handlers.slack_events.update_reaction")
 def test_reaction_approve_nudge(mock_db_react):
     _pending_nudges["777.000"] = {
         "nudge_text": "What do you mean by that?",
@@ -255,7 +255,7 @@ def test_reaction_approve_nudge(mock_db_react):
     assert "off-track" in msg
 
 
-@patch("bot.update_reaction")
+@patch("src.handlers.slack_events.update_reaction")
 def test_reaction_dismiss_nudge(mock_db_react):
     _pending_nudges["666.000"] = {
         "nudge_text": "Are you sure about that?",
@@ -278,9 +278,10 @@ def test_reaction_dismiss_nudge(mock_db_react):
     assert "on track" in msg
 
 
-@patch("bot.update_reaction")
-@patch("bot._get_agent")
+@patch("src.handlers.slack_events.update_reaction")
+@patch("src.handlers.slack_events._get_agent")
 def test_text_approval_accepts_update(mock_agent, mock_db_react):
+    mock_agent.return_value.apply_update.return_value = False
     _pending_updates["111.000"] = {
         "update_text": "Switch to PostgreSQL",
         "channel_name": "test_channel",
@@ -302,8 +303,8 @@ def test_text_approval_accepts_update(mock_agent, mock_db_react):
     assert "updated" in client.chat_postMessage.call_args[1]["text"].lower()
 
 
-@patch("bot.update_reaction")
-@patch("bot._get_agent")
+@patch("src.handlers.slack_events.update_reaction")
+@patch("src.handlers.slack_events._get_agent")
 def test_text_rejection_discards_update(mock_agent, mock_db_react):
     _pending_updates["222.000"] = {
         "update_text": "Switch to PostgreSQL",
@@ -325,8 +326,8 @@ def test_text_rejection_discards_update(mock_agent, mock_db_react):
     assert "discarded" in client.chat_postMessage.call_args[1]["text"].lower()
 
 
-@patch("bot.update_reaction")
-@patch("bot._get_agent")
+@patch("src.handlers.slack_events.update_reaction")
+@patch("src.handlers.slack_events._get_agent")
 def test_text_approval_case_insensitive(mock_agent, mock_db_react):
     for word in ["Yes", "YES", "y", "Y", "Yeah"]:
         _pending_updates["333.000"] = {
@@ -347,11 +348,11 @@ def test_text_approval_case_insensitive(mock_agent, mock_db_react):
         assert "333.000" not in _pending_updates
 
 
-@patch("bot.log_event", return_value=20)
-@patch("bot.fetch_context", return_value="")
-@patch("bot.Path")
-@patch("bot._get_agent")
-@patch("bot._resolve_channel_name", return_value="test_channel")
+@patch("src.handlers.slack_events.log_event", return_value=20)
+@patch("src.handlers.slack_events.fetch_context", return_value="")
+@patch("src.handlers.slack_events.Path")
+@patch("src.handlers.slack_events._get_agent")
+@patch("src.handlers.slack_events._resolve_channel_name", return_value="test_channel")
 def test_handle_message_misalign_warns_and_tracks(mock_resolve, mock_agent, mock_path, mock_history, mock_db):
     mock_agent.return_value.classify.return_value = "MISALIGN|pivot: The team agreed to use SQLite but this suggests MongoDB"
     mock_path.return_value.read_text.return_value = ":warning: Heads up — {misalign_content} This seems to conflict with what's in the ground truth.\n"

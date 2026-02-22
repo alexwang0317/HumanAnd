@@ -1,0 +1,2 @@
+# Important messages for testproject
+# Format: YYYY-MM-DD HH:MM | <@user_id> | slack_permalink | category | summary

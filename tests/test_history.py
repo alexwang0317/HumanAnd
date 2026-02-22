@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from history import fetch_context
+from src.utils.history import fetch_context
 
 
 def test_formats_messages_oldest_first():

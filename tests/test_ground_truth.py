@@ -2,12 +2,12 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from agent import MAX_GROUND_TRUTH_WORDS, ProjectAgent
+from src.services.project_service import MAX_GROUND_TRUTH_WORDS, ProjectAgent
 
 
 def test_compaction_triggers_over_word_limit():
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             agent.initialize([])
             # Write ground truth with more than MAX_GROUND_TRUTH_WORDS words
@@ -19,14 +19,14 @@ def test_compaction_triggers_over_word_limit():
 
 def test_compaction_skips_under_limit():
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             agent.initialize([])
             assert agent.check_compaction() is False
 
 
-@patch("agent.compact_ground_truth")
-@patch("agent.subprocess.run")
+@patch("src.services.project_service.compact_ground_truth")
+@patch("src.services.project_service.subprocess.run")
 def test_compaction_preserves_directory_and_objective(mock_run, mock_compact):
     compacted = (
         "# Project Ground Truth\n\n"
@@ -39,7 +39,7 @@ def test_compaction_preserves_directory_and_objective(mock_run, mock_compact):
     mock_compact.return_value = compacted
 
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             agent.initialize([{"id": "U111", "real_name": "Alex", "name": "alex", "title": "Engineer"}])
             result = agent.compact()
@@ -55,14 +55,14 @@ def test_reads_and_caches_ground_truth():
         project_dir.mkdir()
         (project_dir / "ground_truth.txt").write_text("Launch MVP by Friday.")
         (project_dir / "messages.txt").write_text("")
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("myproject")
     assert agent.ground_truth == "Launch MVP by Friday."
 
 
 def test_cache_invalidated_after_write():
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             agent.initialize([])
             old_gt = agent.ground_truth

@@ -2,14 +2,14 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from agent import ProjectAgent
+from src.services.project_service import ProjectAgent
 
 # --- log_message tests ---
 
 
 def test_log_message_appends_to_messages_file():
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             agent.initialize([])
             agent.log_message("U123", "https://slack.com/archives/C1/p111", "decision", "Switch to Postgres")
@@ -23,7 +23,7 @@ def test_log_message_appends_to_messages_file():
 
 def test_log_message_updates_agent_messages():
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             agent.initialize([])
             agent.log_message("U123", "https://slack.com/archives/C1/p111", "blocker", "CI broken")
@@ -33,14 +33,14 @@ def test_log_message_updates_agent_messages():
 # --- _git_commit tests ---
 
 
-@patch("agent.subprocess.run")
+@patch("src.services.project_service.subprocess.run")
 def test_git_commit_uses_project_branch(mock_run):
     # rev-parse returns non-zero (branch doesn't exist), rest succeed
     check_result = MagicMock(returncode=1)
     mock_run.return_value = check_result
 
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             agent.initialize([])
             # Reset to clear any calls from initialize
@@ -61,10 +61,10 @@ def test_git_commit_uses_project_branch(mock_run):
     assert any("worktree" in c and "remove" in c for c in calls)
 
 
-@patch("agent.subprocess.run", side_effect=Exception("git not found"))
+@patch("src.services.project_service.subprocess.run", side_effect=Exception("git not found"))
 def test_git_commit_skips_silently_on_failure(mock_run):
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             agent.initialize([])
             # Should not raise
@@ -80,7 +80,7 @@ def test_validate_directory_finds_missing_members():
             {"id": "U111", "real_name": "Alex", "name": "alex", "title": ""},
             {"id": "U222", "real_name": "Sarah", "name": "sarah", "title": ""},
         ]
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             agent.initialize(members)
             # U222 is in directory but not in channel
@@ -92,7 +92,7 @@ def test_validate_directory_finds_missing_members():
 def test_validate_directory_returns_empty_when_all_present():
     with tempfile.TemporaryDirectory() as tmp:
         members = [{"id": "U111", "real_name": "Alex", "name": "alex", "title": ""}]
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             agent.initialize(members)
             missing = agent.validate_directory(["U111", "U222"])
@@ -105,7 +105,7 @@ def test_loads_ground_truth():
         project_dir.mkdir()
         (project_dir / "ground_truth.txt").write_text("Launch MVP by Friday.")
         (project_dir / "messages.txt").write_text("")
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("myproject")
     assert agent.ground_truth == "Launch MVP by Friday."
 
@@ -116,14 +116,14 @@ def test_loads_messages_file():
         project_dir.mkdir()
         (project_dir / "ground_truth.txt").write_text("")
         (project_dir / "messages.txt").write_text("https://slack.com/archives/C1/p123 - pivot decision")
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("myproject")
     assert "pivot decision" in agent.messages
 
 
 def test_missing_files_return_empty():
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("nonexistent")
     assert agent.ground_truth == ""
     assert agent.messages == ""
@@ -135,7 +135,7 @@ def test_initialize_creates_ground_truth_with_members():
         {"id": "U222", "real_name": "Sarah", "name": "sarah", "title": "Designer"},
     ]
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             result = agent.initialize(members)
 
@@ -151,7 +151,7 @@ def test_initialize_creates_ground_truth_with_members():
 
 def test_initialize_creates_messages_file():
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             agent.initialize([])
 
@@ -162,17 +162,17 @@ def test_initialize_creates_messages_file():
 
 def test_initialize_reloads_ground_truth():
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             assert agent.ground_truth == ""
             agent.initialize([{"id": "U111", "real_name": "Alex", "name": "alex", "title": ""}])
             assert "Alex" in agent.ground_truth
 
 
-@patch("agent.subprocess.run")
+@patch("src.services.project_service.subprocess.run")
 def test_apply_update_replaces_placeholder(mock_run):
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             agent.initialize([])
             agent.apply_update("Switch to PostgreSQL", "U123")
@@ -182,10 +182,10 @@ def test_apply_update_replaces_placeholder(mock_run):
     assert "(Bot will populate this as decisions are made)" not in content
 
 
-@patch("agent.subprocess.run")
+@patch("src.services.project_service.subprocess.run")
 def test_apply_update_appends_when_no_placeholder(mock_run):
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             agent.initialize([])
             agent.apply_update("First decision", "U111")
@@ -197,7 +197,7 @@ def test_apply_update_appends_when_no_placeholder(mock_run):
 def test_set_role_updates_directory_entry():
     members = [{"id": "U111", "real_name": "Alex", "name": "alex", "title": ""}]
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             agent.initialize(members)
             result = agent.set_role("U111", "Database & Infrastructure")
@@ -209,7 +209,7 @@ def test_set_role_updates_directory_entry():
 def test_set_role_replaces_existing_role():
     members = [{"id": "U111", "real_name": "Alex", "name": "alex", "title": "Engineer"}]
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             agent.initialize(members)
             agent.set_role("U111", "Frontend & UI")
@@ -219,7 +219,7 @@ def test_set_role_replaces_existing_role():
 
 def test_set_role_unknown_user():
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("agent.PROJECTS_DIR", Path(tmp)):
+        with patch("src.services.project_service.PROJECTS_DIR", Path(tmp)):
             agent = ProjectAgent("testproject")
             agent.initialize([])
             result = agent.set_role("U999", "Some role")

@@ -2,7 +2,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from db import get_events, log_event, update_reaction, _connections
+from src.stores.db import get_events, log_event, update_reaction, _connections
 
 
 def _reset_connections():
@@ -12,7 +12,7 @@ def _reset_connections():
 def test_log_event_inserts_row():
     _reset_connections()
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("db.PROJECTS_DIR", Path(tmp)):
+        with patch("src.stores.db.PROJECTS_DIR", Path(tmp)):
             event_id = log_event("testproject", "ROUTE", "U123", "escalation", "needs DB help", "https://slack.com/archives/C1/p111")
             assert event_id > 0
             events = get_events("testproject")
@@ -27,7 +27,7 @@ def test_log_event_inserts_row():
 def test_update_reaction_sets_fields():
     _reset_connections()
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("db.PROJECTS_DIR", Path(tmp)):
+        with patch("src.stores.db.PROJECTS_DIR", Path(tmp)):
             event_id = log_event("testproject", "UPDATE", "U123", "decision", "Switch to Postgres", "https://slack.com/archives/C1/p111")
             update_reaction("testproject", event_id, "approved", "U456")
             events = get_events("testproject")
@@ -38,7 +38,7 @@ def test_update_reaction_sets_fields():
 def test_multiple_events_ordered_newest_first():
     _reset_connections()
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("db.PROJECTS_DIR", Path(tmp)):
+        with patch("src.stores.db.PROJECTS_DIR", Path(tmp)):
             log_event("testproject", "ROUTE", "U1", "escalation", "first", "link1")
             log_event("testproject", "MISALIGN", "U2", "pivot", "second", "link2")
             events = get_events("testproject")
@@ -50,7 +50,7 @@ def test_multiple_events_ordered_newest_first():
 def test_separate_projects_have_separate_dbs():
     _reset_connections()
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("db.PROJECTS_DIR", Path(tmp)):
+        with patch("src.stores.db.PROJECTS_DIR", Path(tmp)):
             log_event("project_a", "ROUTE", "U1", "escalation", "from A", "link1")
             log_event("project_b", "UPDATE", "U2", "decision", "from B", "link2")
             events_a = get_events("project_a")
@@ -64,6 +64,6 @@ def test_separate_projects_have_separate_dbs():
 def test_db_file_created_in_project_dir():
     _reset_connections()
     with tempfile.TemporaryDirectory() as tmp:
-        with patch("db.PROJECTS_DIR", Path(tmp)):
+        with patch("src.stores.db.PROJECTS_DIR", Path(tmp)):
             log_event("testproject", "ROUTE", "U1", "escalation", "test", "link")
         assert (Path(tmp) / "testproject" / "events.db").exists()

@@ -10,7 +10,7 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-from db import get_events
+from src.stores.db import get_events
 
 PROJECTS_DIR = Path("projects")
 DASHBOARD_DIR = Path("dashboard/data")

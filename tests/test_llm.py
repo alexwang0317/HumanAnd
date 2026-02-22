@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from llm import classify_message, respond_to_mention
+from src.services.llm_service import classify_message, classify_pr, respond_to_mention
 
 
 def _mock_response(text: str) -> MagicMock:
@@ -11,8 +11,8 @@ def _mock_response(text: str) -> MagicMock:
     return response
 
 
-@patch("llm._get_client")
-@patch("llm._load_prompt")
+@patch("src.services.llm_service._get_client")
+@patch("src.services.llm_service._load_prompt")
 def test_classify_returns_pass(mock_prompt, mock_client):
     mock_prompt.return_value = "system prompt {ground_truth} {user} {message}"
     mock_client.return_value.messages.create.return_value = _mock_response("PASS")
@@ -21,8 +21,8 @@ def test_classify_returns_pass(mock_prompt, mock_client):
     assert result == "PASS"
 
 
-@patch("llm._get_client")
-@patch("llm._load_prompt")
+@patch("src.services.llm_service._get_client")
+@patch("src.services.llm_service._load_prompt")
 def test_classify_returns_route(mock_prompt, mock_client):
     mock_prompt.return_value = "system prompt {ground_truth} {user} {message}"
     mock_client.return_value.messages.create.return_value = _mock_response(
@@ -34,8 +34,8 @@ def test_classify_returns_route(mock_prompt, mock_client):
     assert "<@U999>" in result
 
 
-@patch("llm._get_client")
-@patch("llm._load_prompt")
+@patch("src.services.llm_service._get_client")
+@patch("src.services.llm_service._load_prompt")
 def test_classify_returns_update(mock_prompt, mock_client):
     mock_prompt.return_value = "system prompt {ground_truth} {user} {message}"
     mock_client.return_value.messages.create.return_value = _mock_response(
@@ -46,8 +46,8 @@ def test_classify_returns_update(mock_prompt, mock_client):
     assert result.startswith("UPDATE:")
 
 
-@patch("llm._get_client")
-@patch("llm._load_prompt")
+@patch("src.services.llm_service._get_client")
+@patch("src.services.llm_service._load_prompt")
 def test_classify_returns_question(mock_prompt, mock_client):
     mock_prompt.return_value = "system prompt {ground_truth} {user} {message}"
     mock_client.return_value.messages.create.return_value = _mock_response(
@@ -58,8 +58,8 @@ def test_classify_returns_question(mock_prompt, mock_client):
     assert result.startswith("QUESTION:")
 
 
-@patch("llm._get_client")
-@patch("llm._load_prompt")
+@patch("src.services.llm_service._get_client")
+@patch("src.services.llm_service._load_prompt")
 def test_classify_returns_misalign(mock_prompt, mock_client):
     mock_prompt.return_value = "system prompt {ground_truth} {user} {message}"
     mock_client.return_value.messages.create.return_value = _mock_response(
@@ -71,8 +71,8 @@ def test_classify_returns_misalign(mock_prompt, mock_client):
     assert "SQLite" in result
 
 
-@patch("llm._get_client")
-@patch("llm._load_prompt")
+@patch("src.services.llm_service._get_client")
+@patch("src.services.llm_service._load_prompt")
 def test_respond_to_mention(mock_prompt, mock_client):
     mock_prompt.return_value = "system prompt {ground_truth}"
     mock_client.return_value.messages.create.return_value = _mock_response(
@@ -81,3 +81,29 @@ def test_respond_to_mention(mock_prompt, mock_client):
 
     result = respond_to_mention("Launch MVP by Friday", "what's our goal?")
     assert "MVP" in result
+
+
+@patch("src.services.llm_service._get_client")
+@patch("src.services.llm_service._load_prompt")
+def test_classify_pr_returns_pass(mock_prompt, mock_client):
+    mock_prompt.return_value = (
+        "prompt {author_name} {author_role} {pr_title} {commits} {ground_truth}"
+    )
+    mock_client.return_value.messages.create.return_value = _mock_response("PASS")
+
+    result = classify_pr("Alex", "Database & Infrastructure", "Fix migration script", "fix migration", "ground truth")
+    assert result == "PASS"
+
+
+@patch("src.services.llm_service._get_client")
+@patch("src.services.llm_service._load_prompt")
+def test_classify_pr_returns_nudge(mock_prompt, mock_client):
+    mock_prompt.return_value = (
+        "prompt {author_name} {author_role} {pr_title} {commits} {ground_truth}"
+    )
+    mock_client.return_value.messages.create.return_value = _mock_response(
+        "NUDGE: Should this go to Sarah (Frontend & UI)?"
+    )
+
+    result = classify_pr("Alex", "Database & Infrastructure", "Redesign navbar", "redesign nav", "ground truth")
+    assert result.startswith("NUDGE:")
