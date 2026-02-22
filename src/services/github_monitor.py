@@ -116,10 +116,9 @@ def _resolve_channel_id(client, channel_name: str) -> str | None:
     return None
 
 
-def poll_once(repo: str, slack_client, agents: dict[str, ProjectAgent], project_name: str = "") -> None:
+def poll_once(repo: str, slack_client, agents: dict[str, ProjectAgent]) -> None:
     """Single poll iteration: fetch PRs, check new ones, post nudges."""
-    # Project name can differ from repo name (e.g. repo "HumanAlign" -> project "new_human_and_model")
-    project_name = project_name or repo.split("/")[-1]
+    project_name = repo.split("/")[-1]
     agent = agents.get(project_name)
     if not agent:
         agent = ProjectAgent(project_name)
@@ -135,7 +134,7 @@ def poll_once(repo: str, slack_client, agents: dict[str, ProjectAgent], project_
         if not nudge:
             continue
 
-        channel_id = _resolve_channel_id(slack_client, project_name)
+        channel_id = _resolve_channel_id(slack_client, os.environ.get("GITHUB_CHANNEL", project_name))
         if not channel_id:
             log.warning("No Slack channel found for project %s", project_name)
             continue
@@ -146,7 +145,7 @@ def poll_once(repo: str, slack_client, agents: dict[str, ProjectAgent], project_
         log.info("PR nudge posted for PR #%d", nudge["pr_number"])
 
 
-def start_polling(repo: str, slack_client, agents: dict[str, ProjectAgent], project_name: str = "") -> threading.Thread:
+def start_polling(repo: str, slack_client, agents: dict[str, ProjectAgent]) -> threading.Thread:
     """Start background polling thread. Returns the thread."""
     def _loop():
         log.info("GitHub PR monitor started for %s (every %ds)", repo, POLL_INTERVAL)
@@ -162,7 +161,7 @@ def start_polling(repo: str, slack_client, agents: dict[str, ProjectAgent], proj
         while True:
             time.sleep(POLL_INTERVAL)
             try:
-                poll_once(repo, slack_client, agents, project_name)
+                poll_once(repo, slack_client, agents)
             except Exception as e:
                 log.error("GitHub poll error: %s", e)
 

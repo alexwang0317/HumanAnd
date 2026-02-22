@@ -7,3 +7,5 @@ __pycache__/
 *.db
 .wrangler/
 dashboard/data/
+projects/*
+!projects/new_human_and_model/

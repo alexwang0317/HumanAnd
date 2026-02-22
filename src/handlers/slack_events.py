@@ -143,6 +143,11 @@ def handle_app_mention(event: dict, client, say) -> None:
             say(f":x: Dashboard deploy failed: {e}", thread_ts=thread_ts)
         return
 
+    if user_message.lower().strip() == "plan":
+        agent = _get_agent(channel_name)
+        say(f":clipboard: *Current ground truth:*\n\n```{agent.ground_truth}```", thread_ts=thread_ts)
+        return
+
     if user_message.lower().strip() == "me":
         log.info("[%s] Person lookup: %s looking up themselves", channel_name, user_id)
         summary = build_person_summary(user_id, _pending_updates, _pending_nudges)
@@ -330,12 +335,14 @@ def handle_reaction(event: dict, client, say) -> None:
     item = event.get("item", {})
     msg_ts = item.get("ts", "")
     channel_id = item.get("channel", "")
+    log.info("Reaction received: :%s: on message %s", reaction, msg_ts)
 
     if msg_ts in _pending_nudges:
         _handle_nudge_reaction(msg_ts, reaction, channel_id, client)
         return
 
     if msg_ts not in _pending_updates:
+        log.info("Reaction on message %s — not a pending update or nudge, ignoring", msg_ts)
         return
 
     pending = _pending_updates[msg_ts]

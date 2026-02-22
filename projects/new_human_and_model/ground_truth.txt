@@ -13,3 +13,4 @@
 * **2026-02-21:** Switch to MongoDB; **alexwang0317** (<@U0AGAKQ1V54>) remains responsible for database & infrastructure. (approved by <@U0AGAKQ1V54>) (approved by <@U0AGAKQ1V54>)
 * **2026-02-21:** Switch to SQLite; **alexwang0317** (<@U0AGAKQ1V54>) remains responsible for database & infrastructure. (approved by <@U0AGAKQ1V54>) (approved by <@U0AGAKQ1V54>)
 * **2026-02-21:** Erik (<@U0AGAN34DD4>) — Role: Frontend, building and designing web interface. (approved by <@U0AGAKQ1V54>)
+* **2026-02-21:** Team has decided to use Tailwind and CSS for the project's frontend styling. (approved by <@U0AGAKQ1V54>)

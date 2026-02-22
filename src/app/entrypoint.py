@@ -21,11 +21,9 @@ def main() -> None:
     github_token = os.environ.get("GITHUB_TOKEN")
     if github_repo and github_token:
         from src.services.github_monitor import start_polling
-        # GITHUB_PROJECT overrides the project name when it differs from the repo name
-        github_project = os.environ.get("GITHUB_PROJECT", "")
-        log.info("Starting GitHub PR monitor for %s (project=%s)", github_repo, github_project or "(from repo name)")
+        log.info("Starting GitHub PR monitor for %s", github_repo)
         # Share the same _agents dict so the monitor reuses cached ProjectAgent instances
-        start_polling(github_repo, app.client, _agents, github_project)
+        start_polling(github_repo, app.client, _agents)
     else:
         log.info("GitHub PR monitor disabled (GITHUB_REPO=%s, GITHUB_TOKEN=%s)", github_repo or "missing", "set" if github_token else "missing")
 
